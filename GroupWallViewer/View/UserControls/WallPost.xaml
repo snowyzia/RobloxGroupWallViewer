@@ -1,0 +1,29 @@
+﻿<UserControl x:Class="GroupWallViewer.View.UserControls.WallPost"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:GroupWallViewer.View.UserControls"
+             mc:Ignorable="d" 
+             Height="100" d:DesignWidth="800">
+    <Grid Background="White" Margin="5">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="100"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+
+        <Image Name = "playerIcon"/>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto"/>
+                <RowDefinition/>
+                <RowDefinition Height="auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="{Binding Username}" FontSize="16" FontWeight="Bold" Margin="10,0,0,0" />
+            <TextBlock Text="{Binding WallText}" TextWrapping="Wrap" VerticalAlignment="Center" FontSize="12" Grid.Row="1" Margin="10,0,0,0" />
+            <TextBlock Text="{Binding AdditionalInformation}" FontWeight="DemiBold" VerticalAlignment="Bottom" FontSize="12" Grid.Row="2" Margin="10,0,0,0" />
+        </Grid>
+    </Grid>
+</UserControl>
