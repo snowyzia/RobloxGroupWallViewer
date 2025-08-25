@@ -8,4 +8,13 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="PlaceholderImages\MissingIcon.jpg" />
+    <None Remove="PlaceholderImages\MissingIcon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="PlaceholderImages\MissingIcon.jpg" />
+  </ItemGroup>
+
 </Project>

@@ -1,26 +1,35 @@
 ﻿using GroupWallViewer.View.UserControls;
 using Microsoft.Win32;
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 
 namespace GroupWallViewer
 {
     public partial class MainWindow : Window
     {
+        private BitmapImage defaultImage = new BitmapImage(new Uri("pack://application:,,,/PlaceholderImages/MissingIcon.jpg"));
+        private List<BitmapImage> bitmapImages = new List<BitmapImage>();
+        private List<WallPostData> wallPostData = new List<WallPostData>();
+        private int currentPage = 0;
+        private readonly int messagesPerPage = 50;
+
         public MainWindow()
         {
             InitializeComponent();
         }
 
+        // buttons
         private void ExitClick(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
         }
-        private void ClearCache(object sender, RoutedEventArgs e)
+        private void ClearCache(object sender, RoutedEventArgs e) // if we want to clear cache and stuff idk....
         {
             MessageBoxResult box = MessageBox.Show("Are you sure you want to clear the icon cache?", "Clear Icon Cache", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (box == MessageBoxResult.Yes)
@@ -36,7 +45,7 @@ namespace GroupWallViewer
                 foreach (var userPicture in Directory.EnumerateFiles(userPicturesPath))
                 {
                     string extension = Path.GetExtension(userPicture);
-                    if (extension == ".png")
+                    if (int.TryParse(Path.GetFileNameWithoutExtension(extension), out int result) & extension == ".png") // ids are like 12345 blah blah so this is a double check yk
                     {
                         File.Delete(userPicture);
                     }
@@ -45,101 +54,99 @@ namespace GroupWallViewer
                 foreach (var groupPicture in Directory.EnumerateFiles(groupPicturesPath))
                 {
                     string extension = Path.GetExtension(groupPicture);
-                    if (extension == ".png")
+                    if (int.TryParse(Path.GetFileNameWithoutExtension(groupPicture), out int result) & extension == ".png")
                     {
                         File.Delete(groupPicture);
                     }
                 }
             }
         }
-        private void CloseGroup(object sender, RoutedEventArgs e) // if we want to clear cache and stuff idk....
+        private void CloseGroup(object sender, RoutedEventArgs e)
         {
             clearCache.Visibility = Visibility.Visible;
+            controlGrid.Visibility = Visibility.Collapsed;
             infoText.Text = "Waiting on group data...";
 
             groupHolder.Children.Clear();
             groupName.Text = "";
             groupDescription.Text = "";
             groupIcon.Source = null;
+
+            wallPostData.Clear();
+            currentPage = 0;
+
+            ClearImages();
         }
-        private async void OpenJson(object sender, RoutedEventArgs e)
+        private void OpenJson(object sender, RoutedEventArgs e)
         {
+            CloseGroup(sender, e);
             clearCache.Visibility = Visibility.Collapsed;
 
             OpenFileDialog groupDataDialog = new OpenFileDialog();
             groupDataDialog.Filter = "Group Wall Data| *.json";
             groupDataDialog.Title = "Please select group data...";
+            groupDataDialog.Multiselect = true;
             groupDataDialog.RestoreDirectory = true;
 
             if (groupDataDialog.ShowDialog() == true)
             {
                 try
                 {
-                    groupHolder.Children.Clear();
                     infoText.Text = "Group wall is loading, please wait!";
-
-                    StreamReader groupDataReader = new StreamReader(groupDataDialog.FileName);
-                    string groupDataJson = groupDataReader.ReadToEnd();
-
-                    JsonDocument groupDataDocument = JsonDocument.Parse(groupDataJson);
-                    var groupData = groupDataDocument.RootElement.GetProperty("data");
-
                     List<WallPost> wallPosts = new List<WallPost>();
-                    foreach (JsonElement property in groupData.EnumerateArray())
+
+                    foreach (var file in groupDataDialog.FileNames)
                     {
-                        var posterData = property.GetProperty("poster");
-                        var userData = posterData.GetProperty("user");
-                        var roleData = posterData.GetProperty("role");
+                        using StreamReader groupDataReader = new StreamReader(file);
+                        string groupDataJson = groupDataReader.ReadToEnd();
 
-                        var userId = userData.GetProperty("userId");
-                        var username = userData.GetProperty("username");
-                        var roleName = roleData.GetProperty("name");
-                        var body = property.GetProperty("body");
+                        using JsonDocument groupDataDocument = JsonDocument.Parse(groupDataJson);
+                        var groupData = groupDataDocument.RootElement.GetProperty("data");
 
-                        WallPost wallPost = new WallPost();
-                        wallPost.Username = username.ToString();
-                        wallPost.WallText = body.ToString();
-                        wallPost.AdditionalInformation = roleName.ToString();
-
-                        BitmapImage userPicture = await GetUserPictureAsync(userId.ToString());
-                        wallPost.playerIcon.Source = userPicture;
-                        wallPosts.Add(wallPost);
-                    }
-
-                    // it takes a while and i dont want the user wondering why half the group wall is not loaded
-                    foreach (WallPost wallPost in wallPosts)
-                    {
-                        groupHolder.Children.Add(wallPost);
-                    }
-
-                    OpenFileDialog groupInfoDialog = new OpenFileDialog();
-                    groupInfoDialog.Filter = "Group Wall Info| *.json";
-                    groupInfoDialog.Title = "Please select group info...";
-                    groupInfoDialog.RestoreDirectory = true;
-
-                    if (groupInfoDialog.ShowDialog() == true)
-                    {
-                        try
+                        foreach (JsonElement property in groupData.EnumerateArray())
                         {
-                            StreamReader groupInfoReader = new StreamReader(groupInfoDialog.FileName);
-                            string json = groupInfoReader.ReadToEnd();
+                            var posterData = property.GetProperty("poster");
+                            if (posterData.ValueKind != JsonValueKind.Null)
+                            {
+                                var userData = posterData.GetProperty("user");
+                                var roleName = posterData.GetProperty("role").GetProperty("name");
 
-                            JsonDocument groupInfoDocument = JsonDocument.Parse(json);
+                                var body = property.GetProperty("body");
+                                var username = userData.GetProperty("username");
+                                var displayName = userData.GetProperty("displayName");
+                                var userId = userData.GetProperty("userId");
 
-                            var grpName = groupInfoDocument.RootElement.GetProperty("GroupName");
-                            var grpDescription = groupInfoDocument.RootElement.GetProperty("Description");
-                            var grpId = groupInfoDocument.RootElement.GetProperty("Id");
-                            groupName.Text = grpName.ToString();
-                            groupDescription.Text = grpDescription.ToString();
+                                var created = property.GetProperty("created");
+                                DateTimeOffset dto = DateTimeOffset.Parse(created.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).ToLocalTime();
+                                string formattedText = dto.ToString("MMMM dd, yyyy '|' hh:mm:ss tt", CultureInfo.InvariantCulture);
 
-                            BitmapImage groupPicture = await GetGroupPictureAsync(grpId.ToString());
-                            groupIcon.Source = groupPicture;
-                            
-                            infoText.Text = $"Fully loaded group: {grpName.ToString()}";
+                                WallPostData data = new WallPostData();
+                                data.WallText = body.ToString();
+                                data.Username = username.ToString();
+                                data.DisplayName = displayName.ToString();
+                                data.UserId = userId.ToString();
+                                data.AdditionalInformation = $"{roleName.ToString()} | {formattedText}";
+                                wallPostData.Add(data);
+                            }
                         }
-                        catch
+                    }
+
+                    string? firstPath = Path.GetDirectoryName(groupDataDialog.FileNames[0].ToString());
+                    string groupInfoPath = Path.Combine(firstPath, "group-info.json");
+                    if (Path.Exists(groupInfoPath))
+                    {
+                        LoadGroupInfo(groupInfoPath);
+                    } 
+                    else
+                    {
+                        OpenFileDialog groupInfoDialog = new OpenFileDialog();
+                        groupInfoDialog.Filter = "Group Wall Info| *.json";
+                        groupInfoDialog.Title = "Please select group info...";
+                        groupInfoDialog.RestoreDirectory = true;
+
+                        if (groupInfoDialog.ShowDialog() == true)
                         {
-                            infoText.Text = "Failed to load group information, group wall will still be shown.";
+                            LoadGroupInfo(groupInfoDialog.FileName);
                         }
                     }
                 }
@@ -148,9 +155,163 @@ namespace GroupWallViewer
                 {
                     infoText.Text = $"Group Data has failed to load: {ex.ToString()}";
                 }
+
+                SwitchPage(0);
             }
         }
+        private void PageTextEntered(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                if (int.TryParse(pageText.Text, out int pageNumber))
+                {
+                    if (pageNumber > 0 & (pageNumber - 1) * messagesPerPage < wallPostData.Count)
+                    {
+                        SwitchPage(pageNumber - 1);
+                    }
+                }
 
+                double totalPages = Math.Ceiling(wallPostData.Count / (double)messagesPerPage);
+                pageText.Text = $"Page {currentPage + 1}/{totalPages}";
+            }
+        }
+        private async void LoadGroupInfo(string filePath)
+        {
+            try
+            {
+                using StreamReader groupInfoReader = new StreamReader(filePath);
+                string json = groupInfoReader.ReadToEnd();
+
+                using JsonDocument groupInfoDocument = JsonDocument.Parse(json);
+
+                var grpName = groupInfoDocument.RootElement.GetProperty("GroupName");
+                var grpDescription = groupInfoDocument.RootElement.GetProperty("Description");
+                var grpId = groupInfoDocument.RootElement.GetProperty("Id");
+                groupName.Text = grpName.ToString();
+                groupDescription.Text = grpDescription.ToString();
+
+                BitmapImage groupPicture = await GetGroupPictureAsync(grpId.ToString());
+                bitmapImages.Add(groupPicture);
+
+                groupIcon.Source = groupPicture;
+
+                infoText.Text = $"Fully loaded group: {grpName.ToString()}";
+            }
+            catch (Exception ex)
+            {
+                infoText.Text = $"Failed to load group information, group wall will still be shown: {ex.ToString()}";
+            }
+        }
+        private async void SwitchPage(int pageNumber)
+        {
+            currentPage = pageNumber;
+            if (pageNumber*messagesPerPage < wallPostData.Count)
+            {
+                groupHolder.Children.Clear();
+                ClearImages();
+                controlGrid.Visibility = Visibility.Visible;
+
+                int startingIndex = pageNumber * messagesPerPage;
+                int rangeCount = messagesPerPage;
+                if (startingIndex+messagesPerPage > wallPostData.Count)
+                {
+                    rangeCount = wallPostData.Count-startingIndex;
+                }
+
+                List<WallPostData> data = wallPostData.GetRange(startingIndex, rangeCount);
+                List<WallPost> wallPosts = new List<WallPost>();
+
+                // batch request icons so im not spamming tf outta the api
+                List<string> userIds = new List<string>();
+                foreach (var d in data)
+                {
+                    string userId = d.UserId;
+                    if (userIds.Count < 100 & !userIds.Contains(userId))
+                    {
+                        userIds.Add(userId);
+                    }
+                }
+                BatchUserPictures(userIds);
+
+                foreach (var d in data)
+                {
+                    WallPost wallPost = new WallPost();
+
+                    string userId = d.UserId;
+                    BitmapImage userPicture = await GetUserPictureAsync(userId);
+                    bitmapImages.Add(userPicture);
+
+                    wallPost.Username = $"{d.DisplayName} (@{d.Username})";
+                    if (d.Username == d.DisplayName) {
+                        wallPost.Username = d.Username;
+                    }
+
+                    wallPost.WallText = d.WallText;
+                    wallPost.playerIcon.Source = userPicture;
+                    wallPost.AdditionalInformation = d.AdditionalInformation;
+                    wallPosts.Add(wallPost);
+                }
+
+                // it takes a while and i dont want the user wondering why half the group wall is not loaded
+                foreach (WallPost wallPost in wallPosts)
+                {
+                    groupHolder.Children.Add(wallPost);
+                }
+            }
+            else
+            {
+                CloseGroup(this, new RoutedEventArgs());
+            }
+
+            if (currentPage > 0)
+            {
+                prevButton.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                prevButton.Visibility = Visibility.Hidden;
+            }
+
+            if ((currentPage + 1) * messagesPerPage < wallPostData.Count)
+            {
+                nextButton.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                nextButton.Visibility = Visibility.Hidden;
+            }
+
+            double totalPages = Math.Ceiling(wallPostData.Count / (double)messagesPerPage);
+            pageText.Text = $"Page {currentPage + 1}/{totalPages}";
+        }
+        private void PreviousPage(object sender, RoutedEventArgs e)
+        {
+            if (currentPage > 0)
+            {
+                SwitchPage(currentPage - 1);
+            }
+        }
+        private void NextPage(object sender, RoutedEventArgs e)
+        {
+            if ((currentPage + 1) * messagesPerPage < wallPostData.Count)
+            {
+                SwitchPage(currentPage + 1);
+            }
+        }
+        private void ClearImages() // this is when i had everything load on one page and im too lazy to remove it lol
+        {
+            if (bitmapImages != null)
+            {
+                foreach (BitmapImage image in bitmapImages)
+                {
+                    image.Freeze();
+                }
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
+
+            defaultImage = new BitmapImage(new Uri("pack://application:,,,/PlaceholderImages/MissingIcon.jpg"));
+        }
         private async Task<BitmapImage> GetUserPictureAsync(string userId)
         {
             string? directoryPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -169,32 +330,121 @@ namespace GroupWallViewer
             string imagePath = Path.Combine(newPath, $"{groupId}.png");
             return await GetPictureAsync($"https://thumbnails.roblox.com/v1/groups/icons?groupIds={groupId}&size=150x150&format=Png&isCircular=false", newPath, imagePath);
         }
-
         private async Task<BitmapImage> GetPictureAsync(string url, string newPath, string imagePath)
         {
             if (Path.Exists(imagePath))
             {
-                return new BitmapImage(new Uri(imagePath));
+                return LoadImage(imagePath);
             }
             else
             {
                 try
                 {
-                    HttpClient httpClient = new HttpClient();
+                    using HttpClient httpClient = new HttpClient();
                     var response = httpClient.GetStringAsync(url).Result;
-                    JsonDocument userHeadshotInfo = JsonDocument.Parse(response.ToString());
-                    var data = userHeadshotInfo.RootElement.GetProperty("data");
-                    var imageUrl = data[0].GetProperty("imageUrl");
+                    using JsonDocument userHeadshotInfo = JsonDocument.Parse(response.ToString());
+                    var data = userHeadshotInfo.RootElement.GetProperty("data")[0];
 
-                    byte[] imageBytes = await httpClient.GetByteArrayAsync(imageUrl.ToString());
-                    await File.WriteAllBytesAsync(imagePath, imageBytes); // automatically .png
-                    return new BitmapImage(new Uri(imagePath));
+                    string targetId = data.GetProperty("targetId").ToString();
+                    string state = data.GetProperty("state").ToString();
+                    var imageUrl = data.GetProperty("imageUrl").ToString();
+                    if (state == "Completed" & imageUrl != "")
+                    {
+                        byte[] imageBytes = await httpClient.GetByteArrayAsync(imageUrl.ToString());
+                        await File.WriteAllBytesAsync(imagePath, imageBytes);
+                        return LoadImage(imagePath);
+                    }
+                    else
+                    {
+                        return defaultImage;
+                    }
                 }
                 catch
                 {
-                    return new BitmapImage(new Uri(Path.Combine(newPath, "1.png")));
+                    return defaultImage;
                 }
             }
         }
+        private void BatchUserPictures(List<string> userIdList)
+        {
+            string? directoryPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string newPath = Path.Combine(directoryPath, "UserPictures");
+            Directory.CreateDirectory(newPath);
+
+            string userIds = "";
+            foreach (var userId in userIdList)
+            {
+                string imagePath = Path.Combine(newPath, $"{userId}.png");
+                if (!Path.Exists(imagePath))
+                {
+                    if (userIds == "")
+                    {
+                        userIds = userId;
+                    }
+                    else
+                    {
+                        userIds = userIds + $",{userId}";
+                    }
+                }
+            }
+            BatchPicturesAsync($"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={userIds}&size=150x150&format=Png&isCircular=false", newPath, userIds);
+        }
+        private async void BatchPicturesAsync(string url, string newPath, string userIds)
+        {
+            if (userIds == "")
+            {
+                return;
+            }
+
+            try
+            {
+                using HttpClient httpClient = new HttpClient();
+                var response = httpClient.GetStringAsync(url).Result;
+                using JsonDocument userHeadshotInfo = JsonDocument.Parse(response.ToString());
+                var data = userHeadshotInfo.RootElement.GetProperty("data");
+
+                string[] ids = userIds.Split(',');
+
+                foreach (var item in data.EnumerateArray())
+                {
+                    string targetId = item.GetProperty("targetId").ToString();
+                    string state = item.GetProperty("state").ToString();
+                    var imageUrl = item.GetProperty("imageUrl").ToString();
+
+                    if (state == "Completed" & imageUrl != "")
+                    {
+                        string imagePath = Path.Combine(newPath, $"{targetId}.png");
+                        byte[] imageBytes = await httpClient.GetByteArrayAsync(imageUrl.ToString());
+                        await File.WriteAllBytesAsync(imagePath, imageBytes); // automatically .png
+                    }
+                }
+            }
+            catch { }
+        }
+        private static BitmapImage LoadImage(string imagePath)
+        {
+            BitmapImage bitmapImage = null;
+            if (imagePath != null)
+            {
+                BitmapImage image = new BitmapImage();
+                using FileStream stream = File.OpenRead(imagePath);
+
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.StreamSource = stream;
+                image.EndInit();
+                bitmapImage = image;
+            }
+            return bitmapImage;
+        }
+    }
+
+    public class WallPostData
+    {
+        public string? Username { get; set; }
+        public string? DisplayName { get; set; }
+        public string? UserId { get; set; }
+        public string? WallText { get; set; }
+        public string? AdditionalInformation { get; set; }
     }
 }

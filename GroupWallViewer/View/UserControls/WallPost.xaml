@@ -21,9 +21,9 @@
                 <RowDefinition Height="auto"/>
             </Grid.RowDefinitions>
 
-            <TextBlock Text="{Binding Username}" FontSize="16" FontWeight="Bold" Margin="10,0,0,0" />
-            <TextBlock Text="{Binding WallText}" TextWrapping="Wrap" VerticalAlignment="Center" FontSize="12" Grid.Row="1" Margin="10,0,0,0" />
-            <TextBlock Text="{Binding AdditionalInformation}" FontWeight="DemiBold" VerticalAlignment="Bottom" FontSize="12" Grid.Row="2" Margin="10,0,0,0" />
+            <TextBox Text="{Binding Username}" FontSize="16" FontWeight="Bold" Margin="10,0,0,0" BorderThickness="0" Background="Transparent" IsReadOnly="True"/>
+            <TextBox Text="{Binding WallText}" TextWrapping="Wrap" VerticalAlignment="Center" FontSize="12" Grid.Row="1" Margin="10,0,0,0" BorderThickness="0" Background="Transparent" IsReadOnly="True"/>
+            <TextBox Text="{Binding AdditionalInformation}" FontWeight="DemiBold" VerticalAlignment="Bottom" FontSize="12" Grid.Row="2" Margin="10,0,0,0" BorderThickness="0" Background="Transparent" IsReadOnly="True"/>
         </Grid>
     </Grid>
 </UserControl>

@@ -10,8 +10,9 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"/>
-            <RowDefinition Height="80"/>
+            <RowDefinition Height="120"/>
             <RowDefinition/>
+            <RowDefinition Height="25"/>
             <RowDefinition Height="20"/>
         </Grid.RowDefinitions>
 
@@ -26,7 +27,7 @@
 
         <Grid Grid.Row="1" Background="#F0F0F0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="120"/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
 
@@ -34,21 +35,47 @@
 
             <Grid Grid.Column="1" Margin="5">
                 <Grid.RowDefinitions>
-                    <RowDefinition/>
+                    <RowDefinition Height="25"/>
                     <RowDefinition/>
                 </Grid.RowDefinitions>
                 
                 <TextBlock Name="groupName" Text="" VerticalAlignment="Center"/>
-                <TextBlock Name="groupDescription" Text="" Grid.Row="1" VerticalAlignment="Center"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" VirtualizingPanel.ScrollUnit="Pixel">
+                    <TextBlock Name="groupDescription" Text="" VerticalAlignment="Top"/>
+                </ScrollViewer>
             </Grid>
         </Grid>
 
         <ScrollViewer Grid.Row="2" VirtualizingPanel.ScrollUnit="Pixel">
-            <StackPanel Name = "groupHolder">
-  
-            </StackPanel>
+            <StackPanel Name="groupHolder"/>
         </ScrollViewer>
-        
-        <TextBlock Name = "infoText" Text="Waiting on group data..." Grid.Row="32" Margin="2"/>
+
+        <Grid Grid.Row="3" Name="controlGrid" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width=".1*"/>
+                <ColumnDefinition Width=".8*"/>
+                <ColumnDefinition Width=".1*"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Name="prevButton" Click="PreviousPage" Grid.Column="0" Margin="2">
+                <TextBlock Text="Previous Page" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" FontSize="11" TextWrapping="NoWrap"/>
+            </Button>
+
+            <TextBox Name="pageText" Text="Page 1/999" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" FontSize="16" KeyDown="PageTextEntered"/>
+
+            <Button Name="nextButton" Click="NextPage" Grid.Column="2" Margin="2">
+                <TextBlock Text="Next Page" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" FontSize="11" TextWrapping="Wrap"/>
+            </Button>
+        </Grid>
+
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width=".8*"/>
+                <ColumnDefinition Width=".2*"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBlock Name="infoText" Text="Waiting on group data..." Margin="2"/>
+            <TextBlock Text="Made by @snowierzia" HorizontalAlignment="Right" TextAlignment="Right" Grid.Column="1" Margin="2"/>
+        </Grid>
     </Grid>
 </Window>
