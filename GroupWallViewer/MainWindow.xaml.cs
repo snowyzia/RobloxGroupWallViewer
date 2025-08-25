@@ -45,7 +45,7 @@ namespace GroupWallViewer
                 foreach (var userPicture in Directory.EnumerateFiles(userPicturesPath))
                 {
                     string extension = Path.GetExtension(userPicture);
-                    if (int.TryParse(Path.GetFileNameWithoutExtension(extension), out int result) & extension == ".png") // ids are like 12345 blah blah so this is a double check yk
+                    if (Path.GetFileNameWithoutExtension(userPicture).All(char.IsDigit) & extension == ".png") // ids are like 12345 blah blah so this is a double check yk
                     {
                         File.Delete(userPicture);
                     }
@@ -54,7 +54,7 @@ namespace GroupWallViewer
                 foreach (var groupPicture in Directory.EnumerateFiles(groupPicturesPath))
                 {
                     string extension = Path.GetExtension(groupPicture);
-                    if (int.TryParse(Path.GetFileNameWithoutExtension(groupPicture), out int result) & extension == ".png")
+                    if (Path.GetFileNameWithoutExtension(groupPicture).All(char.IsDigit) & extension == ".png")
                     {
                         File.Delete(groupPicture);
                     }
@@ -80,7 +80,6 @@ namespace GroupWallViewer
         private void OpenJson(object sender, RoutedEventArgs e)
         {
             CloseGroup(sender, e);
-            clearCache.Visibility = Visibility.Collapsed;
 
             OpenFileDialog groupDataDialog = new OpenFileDialog();
             groupDataDialog.Filter = "Group Wall Data| *.json";
@@ -90,6 +89,7 @@ namespace GroupWallViewer
 
             if (groupDataDialog.ShowDialog() == true)
             {
+                clearCache.Visibility = Visibility.Collapsed;
                 try
                 {
                     infoText.Text = "Group wall is loading, please wait!";
@@ -205,6 +205,29 @@ namespace GroupWallViewer
         private async void SwitchPage(int pageNumber)
         {
             currentPage = pageNumber;
+
+
+            if (currentPage > 0)
+            {
+                prevButton.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                prevButton.Visibility = Visibility.Hidden;
+            }
+
+            if ((currentPage + 1) * messagesPerPage < wallPostData.Count)
+            {
+                nextButton.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                nextButton.Visibility = Visibility.Hidden;
+            }
+
+            double totalPages = Math.Ceiling(wallPostData.Count / (double)messagesPerPage);
+            pageText.Text = $"Page {currentPage + 1}/{totalPages}";
+
             if (pageNumber*messagesPerPage < wallPostData.Count)
             {
                 groupHolder.Children.Clear();
@@ -262,27 +285,6 @@ namespace GroupWallViewer
             {
                 CloseGroup(this, new RoutedEventArgs());
             }
-
-            if (currentPage > 0)
-            {
-                prevButton.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                prevButton.Visibility = Visibility.Hidden;
-            }
-
-            if ((currentPage + 1) * messagesPerPage < wallPostData.Count)
-            {
-                nextButton.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                nextButton.Visibility = Visibility.Hidden;
-            }
-
-            double totalPages = Math.Ceiling(wallPostData.Count / (double)messagesPerPage);
-            pageText.Text = $"Page {currentPage + 1}/{totalPages}";
         }
         private void PreviousPage(object sender, RoutedEventArgs e)
         {
