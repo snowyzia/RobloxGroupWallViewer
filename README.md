@@ -1,0 +1,3 @@
+A sort of Roblox Group Wall Viewer, at the moment it only reads from a json file and isn't really meant for public use.
+
+There is most likely some issues as I have only used C# only a few times in the past. I am a Roblox Lua child...
