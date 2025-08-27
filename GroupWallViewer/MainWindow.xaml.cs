@@ -1,4 +1,5 @@
 ﻿using GroupWallViewer.View.UserControls;
+using GroupWallViewer.View.Windows;
 using Microsoft.Win32;
 using System.Globalization;
 using System.IO;
@@ -14,7 +15,6 @@ namespace GroupWallViewer
     public partial class MainWindow : Window
     {
         private BitmapImage defaultImage = new BitmapImage(new Uri("pack://application:,,,/PlaceholderImages/MissingIcon.jpg"));
-        private List<BitmapImage> bitmapImages = new List<BitmapImage>();
         private List<WallPostData> wallPostData = new List<WallPostData>();
         private int currentPage = 0;
         private readonly int messagesPerPage = 50;
@@ -31,35 +31,36 @@ namespace GroupWallViewer
         }
         private void ClearCache(object sender, RoutedEventArgs e) // if we want to clear cache and stuff idk....
         {
-            MessageBoxResult box = MessageBox.Show("Are you sure you want to clear the icon cache?", "Clear Icon Cache", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (box == MessageBoxResult.Yes)
-            {
-                string? directoryPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            MessageBoxResult box = MessageBox.Show("This feature has been disabled, I do NOT trust myself enough. Please manually delete the UserPictures and GroupPictures folders to clear the icon cache.", "Clear Icon Cache", MessageBoxButton.OK, MessageBoxImage.Information);
+            //MessageBoxResult box = MessageBox.Show("Are you sure you want to clear the icon cache?", "Clear Icon Cache", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            //if (box == MessageBoxResult.Yes)
+            //{
+            //    string? directoryPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-                string userPicturesPath = Path.Combine(directoryPath, "UserPictures");
-                Directory.CreateDirectory(userPicturesPath);
+            //    string userPicturesPath = Path.Combine(directoryPath, "UserPictures");
+            //    Directory.CreateDirectory(userPicturesPath);
 
-                string groupPicturesPath = Path.Combine(directoryPath, "GroupPictures");
-                Directory.CreateDirectory(groupPicturesPath);
+            //    string groupPicturesPath = Path.Combine(directoryPath, "GroupPictures");
+            //    Directory.CreateDirectory(groupPicturesPath);
 
-                foreach (var userPicture in Directory.EnumerateFiles(userPicturesPath))
-                {
-                    string extension = Path.GetExtension(userPicture);
-                    if (Path.GetFileNameWithoutExtension(userPicture).All(char.IsDigit) & extension == ".png") // ids are like 12345 blah blah so this is a double check yk
-                    {
-                        File.Delete(userPicture);
-                    }
-                }
+            //    foreach (var userPicture in Directory.EnumerateFiles(userPicturesPath))
+            //    {
+            //        string extension = Path.GetExtension(userPicture);
+            //        if (Path.GetFileNameWithoutExtension(userPicture).All(char.IsDigit) & extension == ".png") // ids are like 12345 blah blah so this is a double check yk
+            //        {
+            //            File.Delete(userPicture);
+            //        }
+            //    }
 
-                foreach (var groupPicture in Directory.EnumerateFiles(groupPicturesPath))
-                {
-                    string extension = Path.GetExtension(groupPicture);
-                    if (Path.GetFileNameWithoutExtension(groupPicture).All(char.IsDigit) & extension == ".png")
-                    {
-                        File.Delete(groupPicture);
-                    }
-                }
-            }
+            //    foreach (var groupPicture in Directory.EnumerateFiles(groupPicturesPath))
+            //    {
+            //        string extension = Path.GetExtension(groupPicture);
+            //        if (Path.GetFileNameWithoutExtension(groupPicture).All(char.IsDigit) & extension == ".png")
+            //        {
+            //            File.Delete(groupPicture);
+            //        }
+            //    }
+            //}
         }
         private void CloseGroup(object sender, RoutedEventArgs e)
         {
@@ -68,15 +69,22 @@ namespace GroupWallViewer
             infoText.Text = "Waiting on group data...";
 
             groupHolder.Children.Clear();
-            groupName.Text = "";
-            groupDescription.Text = "";
-            groupIcon.Source = null;
+            wallPostName.Text = "";
+            wallPostDescription.Text = "";
+            wallPostIcon.Source = null;
 
             wallPostData.Clear();
             currentPage = 0;
-
-            ClearImages();
         }
+        private void OpenSettings(object sender, RoutedEventArgs e)
+        {
+            SettingsWindow settingsWindow = new SettingsWindow();
+            
+            settingsWindow.Owner = this;
+            settingsWindow.ShowDialog();
+        }
+
+        // main things but one more button....t
         private void OpenJson(object sender, RoutedEventArgs e)
         {
             CloseGroup(sender, e);
@@ -93,8 +101,6 @@ namespace GroupWallViewer
                 try
                 {
                     infoText.Text = "Group wall is loading, please wait!";
-                    List<WallPost> wallPosts = new List<WallPost>();
-
                     foreach (var file in groupDataDialog.FileNames)
                     {
                         using StreamReader groupDataReader = new StreamReader(file);
@@ -120,13 +126,13 @@ namespace GroupWallViewer
                                 DateTimeOffset dto = DateTimeOffset.Parse(created.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).ToLocalTime();
                                 string formattedText = dto.ToString("MMMM dd, yyyy '|' hh:mm:ss tt", CultureInfo.InvariantCulture);
 
-                                WallPostData data = new WallPostData();
-                                data.WallText = body.ToString();
-                                data.Username = username.ToString();
-                                data.DisplayName = displayName.ToString();
-                                data.UserId = userId.ToString();
-                                data.AdditionalInformation = $"{roleName.ToString()} | {formattedText}";
-                                wallPostData.Add(data);
+                                WallPostData postData = new WallPostData();
+                                postData.WallText = body.ToString();
+                                postData.Username = username.ToString();
+                                postData.DisplayName = displayName.ToString();
+                                postData.UserId = userId.ToString();
+                                postData.AdditionalInformation = $"{roleName.ToString()} | {formattedText}";
+                                wallPostData.Add(postData);
                             }
                         }
                     }
@@ -184,18 +190,17 @@ namespace GroupWallViewer
 
                 using JsonDocument groupInfoDocument = JsonDocument.Parse(json);
 
-                var grpName = groupInfoDocument.RootElement.GetProperty("GroupName");
-                var grpDescription = groupInfoDocument.RootElement.GetProperty("Description");
-                var grpId = groupInfoDocument.RootElement.GetProperty("Id");
-                groupName.Text = grpName.ToString();
-                groupDescription.Text = grpDescription.ToString();
+                var groupName = groupInfoDocument.RootElement.GetProperty("GroupName");
+                var groupDescription = groupInfoDocument.RootElement.GetProperty("Description");
+                var groupId = groupInfoDocument.RootElement.GetProperty("Id");
+                wallPostName.Text = groupName.ToString();
+                wallPostDescription.Text = groupDescription.ToString();
 
-                BitmapImage groupPicture = await GetGroupPictureAsync(grpId.ToString());
-                bitmapImages.Add(groupPicture);
+                BitmapImage groupPicture = await GetGroupPictureAsync(groupId.ToString());
 
-                groupIcon.Source = groupPicture;
+                wallPostIcon.Source = groupPicture;
 
-                infoText.Text = $"Fully loaded group: {grpName.ToString()}";
+                infoText.Text = $"Fully loaded group: {groupName.ToString()}";
             }
             catch (Exception ex)
             {
@@ -231,7 +236,6 @@ namespace GroupWallViewer
             if (pageNumber*messagesPerPage < wallPostData.Count)
             {
                 groupHolder.Children.Clear();
-                ClearImages();
                 controlGrid.Visibility = Visibility.Visible;
 
                 int startingIndex = pageNumber * messagesPerPage;
@@ -244,25 +248,35 @@ namespace GroupWallViewer
                 List<WallPostData> data = wallPostData.GetRange(startingIndex, rangeCount);
                 List<WallPost> wallPosts = new List<WallPost>();
 
-                // batch request icons so im not spamming tf outta the api
-                List<string> userIds = new List<string>();
-                foreach (var d in data)
+                if (Properties.Settings.Default.DisplayUserIcons)
                 {
-                    string userId = d.UserId;
-                    if (userIds.Count < 100 & !userIds.Contains(userId))
+                    // batch request icons so im not spamming tf outta the api
+                    List<string> userIds = new List<string>();
+                    foreach (var d in data)
                     {
-                        userIds.Add(userId);
+                        string userId = d.UserId;
+                        if (userIds.Count < 100 & !userIds.Contains(userId))
+                        {
+                            userIds.Add(userId);
+                        }
                     }
+                    BatchUserPictures(userIds);
                 }
-                BatchUserPictures(userIds);
 
                 foreach (var d in data)
                 {
                     WallPost wallPost = new WallPost();
 
-                    string userId = d.UserId;
-                    BitmapImage userPicture = await GetUserPictureAsync(userId);
-                    bitmapImages.Add(userPicture);
+                    if (Properties.Settings.Default.DisplayUserIcons)
+                    {
+                        string userId = d.UserId;
+                        BitmapImage userPicture = await GetUserPictureAsync(userId);
+                        wallPost.playerIcon.Source = userPicture;
+                    }
+                    else
+                    {
+                        wallPost.playerIcon.Source = defaultImage;
+                    }
 
                     wallPost.Username = $"{d.DisplayName} (@{d.Username})";
                     if (d.Username == d.DisplayName) {
@@ -270,7 +284,6 @@ namespace GroupWallViewer
                     }
 
                     wallPost.WallText = d.WallText;
-                    wallPost.playerIcon.Source = userPicture;
                     wallPost.AdditionalInformation = d.AdditionalInformation;
                     wallPosts.Add(wallPost);
                 }
@@ -299,20 +312,6 @@ namespace GroupWallViewer
             {
                 SwitchPage(currentPage + 1);
             }
-        }
-        private void ClearImages() // this is when i had everything load on one page and im too lazy to remove it lol
-        {
-            if (bitmapImages != null)
-            {
-                foreach (BitmapImage image in bitmapImages)
-                {
-                    image.Freeze();
-                }
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-            }
-
-            defaultImage = new BitmapImage(new Uri("pack://application:,,,/PlaceholderImages/MissingIcon.jpg"));
         }
         private async Task<BitmapImage> GetUserPictureAsync(string userId)
         {

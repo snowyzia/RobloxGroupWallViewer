@@ -21,6 +21,7 @@
                 <MenuItem Header="Open Json" Click="OpenJson"/>
                 <MenuItem Name="clearCache" Header="Clear Icon Cache" Visibility="Visible" Click="ClearCache"/>
                 <MenuItem Header="Close Group" Click="CloseGroup"/>
+                <MenuItem Header="Settings" Click="OpenSettings"/>
                 <MenuItem Header="Exit" Click="ExitClick"/>
             </MenuItem>
         </Menu>
@@ -31,7 +32,7 @@
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
 
-            <Image Name="groupIcon" Margin="5"/>
+            <Image Name="wallPostIcon" Margin="5"/>
 
             <Grid Grid.Column="1" Margin="5">
                 <Grid.RowDefinitions>
@@ -39,9 +40,9 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
                 
-                <TextBlock Name="groupName" Text="" VerticalAlignment="Center"/>
+                <TextBlock Name="wallPostName" Text="" VerticalAlignment="Center"/>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" VirtualizingPanel.ScrollUnit="Pixel">
-                    <TextBlock Name="groupDescription" Text="" VerticalAlignment="Top"/>
+                    <TextBlock Name="wallPostDescription" Text="" VerticalAlignment="Top"/>
                 </ScrollViewer>
             </Grid>
         </Grid>
